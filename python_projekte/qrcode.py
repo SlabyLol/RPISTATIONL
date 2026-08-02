@@ -1,13 +1,20 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 import qrcode
+import os
+from datetime import datetime
+
+current_img = None
 
 def update_qr(event=None):
-    text = entry.get("1.0", tk.END).strip()
+    global current_img
+
+    text = text_entry.get("1.0", tk.END).strip()
 
     if not text:
-        label.config(image="")
-        label.image = None
+        qr_label.config(image="")
+        qr_label.image = None
+        current_img = None
         return
 
     qr = qrcode.QRCode(
@@ -21,14 +28,38 @@ def update_qr(event=None):
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    current_img = img
+
     photo = ImageTk.PhotoImage(img)
 
-    label.config(image=photo)
-    label.image = photo
+    qr_label.config(image=photo)
+    qr_label.image = photo
+
+
+def save_qr():
+    global current_img
+
+    if current_img is None:
+        return
+
+    os.makedirs("qrs", exist_ok=True)
+
+    name = name_entry.get().strip()
+
+    if not name:
+        name = datetime.now().strftime("qr_%Y%m%d_%H%M%S")
+
+    for c in '\\/:*?"<>|':
+        name = name.replace(c, "_")
+
+    current_img.save(f"qrs/{name}.png")
+
+    status.config(text=f"Gespeichert: qrs/{name}.png")
+
 
 root = tk.Tk()
 root.title("QR-Code Generator")
-root.geometry("700x400")
+root.geometry("750x450")
 
 left = tk.Frame(root)
 left.pack(side="left", fill="both", expand=True, padx=10, pady=10)
@@ -36,13 +67,23 @@ left.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 right = tk.Frame(root)
 right.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
-tk.Label(left, text="Text eingeben:").pack(anchor="w")
+tk.Label(left, text="Text:").pack(anchor="w")
 
-entry = tk.Text(left, width=40, height=15)
-entry.pack(fill="both", expand=True)
-entry.bind("<KeyRelease>", update_qr)
+text_entry = tk.Text(left, width=40, height=12)
+text_entry.pack(fill="both", expand=True)
+text_entry.bind("<KeyRelease>", update_qr)
 
-label = tk.Label(right)
-label.pack(expand=True)
+tk.Label(left, text="Dateiname:").pack(anchor="w", pady=(10, 0))
+
+name_entry = tk.Entry(left)
+name_entry.pack(fill="x")
+
+tk.Button(left, text="Speichern", command=save_qr).pack(pady=10)
+
+status = tk.Label(left, text="")
+status.pack()
+
+qr_label = tk.Label(right)
+qr_label.pack(expand=True)
 
 root.mainloop()
